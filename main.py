@@ -1,6 +1,27 @@
 import tkinter as tk
-from tkinter.scrolledtext import ScrolledText
 from tkinter.ttk import Separator
+
+
+from tkinter.scrolledtext import ScrolledText
+
+    
+
+
+class ReactiveTextEntry(ScrolledText):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._orig = self._w + "_orig"
+        self.tk.call("rename", self._w, self._orig)
+        self.tk.createcommand(self._w, self._proxy)
+	
+    def _proxy(self, command, *args):
+        cmd = (self._orig, command) + args
+        result = self.tk.call(cmd)
+
+        if command in ("insert", "delete", "replace"):
+            self.event_generate("<<TextModified>>")
+        return result	
+
 class Application(tk.Frame):
 
     def __init__(self, master=None):
@@ -10,20 +31,20 @@ class Application(tk.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        #self.hi_there = tk.Button(self)
-        #self.hi_there["text"] = "Hello World\n(click me)"
-        #self.hi_there["command"] = self.say_hi
-        #self.hi_there.pa(side="top")
-
-        #self.quit = tk.Button(self, text="QUIT", fg="red",
-        #                      command=self.master.destroy)
-        #self.quit.pack(side="bottom")
-        ScrolledText(self).grid(row=1, column =0)
+        entry = ReactiveTextEntry(self)
+        entry.grid(row=1, column =0)
+        entry.bind('<<TextModified>>', self.onModification)
         Separator(self, orient='vertical').grid(row=0, column=1, sticky='ns')
-        ScrolledText(self).grid(row=1, column =2)
-    def say_hi(self):
-        print("hi there, everyone!")
+        self.preview = ScrolledText(self)
+        self.preview.grid(row=1, column =2)
 
+    def onModification(self, event):
+        chars = event.widget.get("1.0", tk.END)
+        self.preview.delete(1.0, tk.END)
+        self.preview.insert(tk.END, chars)
+
+
+    
 root = tk.Tk()
 app = Application(master=root)
 app.mainloop()
